@@ -21,6 +21,9 @@ PREFIX="$WORK/prefix"
 JOBS="$(sysctl -n hw.ncpu)"
 export MACOSX_DEPLOYMENT_TARGET="$MIN_MACOS"
 FLAGS="-arch $ARCH -mmacosx-version-min=$MIN_MACOS -O2"
+# רק ספריות שאנחנו בונים כאן, לא מה שמותקן במכונת הבנייה (Homebrew)
+export PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
+export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 
 fetch() {  # fetch <url> <sha256> <file>
   curl -fsSL --retry 3 -o "$WORK/$3" "$1"
@@ -37,7 +40,7 @@ cd "$WORK/lame-$LAME_VERSION"
 HOST_ARGS=()
 [ "$ARCH" != "$(uname -m)" ] && HOST_ARGS=(--host="$ARCH-apple-darwin")
 CC=clang CFLAGS="$FLAGS" LDFLAGS="$FLAGS" ./configure --prefix="$PREFIX" ${HOST_ARGS[@]+"${HOST_ARGS[@]}"} \
-  --disable-shared --enable-static --disable-frontend --disable-gtktest
+  --disable-shared --enable-static --disable-frontend --disable-gtktest --disable-decoder
 make -j"$JOBS" && make install
 echo "::endgroup::"
 
