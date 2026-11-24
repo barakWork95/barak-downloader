@@ -11,11 +11,14 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         arch: [arm64, x86_64]
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Build tools (assembler only, not linked)
+        run: brew install nasm
       - name: Build
         run: scripts/build-ffmpeg.sh ${{ matrix.arch }} dist
       - name: Smoke test
