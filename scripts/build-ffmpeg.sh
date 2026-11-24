@@ -54,7 +54,7 @@ CROSS=()
   --enable-static --disable-shared --disable-debug --disable-doc --disable-ffplay \
   --disable-autodetect --disable-indevs --disable-outdevs \
   --enable-securetransport --enable-videotoolbox --enable-audiotoolbox \
-  --enable-zlib --enable-bzlib --enable-iconv --enable-libmp3lame
+  --enable-zlib --enable-bzlib --enable-libmp3lame
 make -j"$JOBS"
 echo "::endgroup::"
 
