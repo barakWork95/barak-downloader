@@ -36,7 +36,7 @@ echo "::group::LAME ($ARCH)"
 cd "$WORK/lame-$LAME_VERSION"
 HOST_ARGS=()
 [ "$ARCH" != "$(uname -m)" ] && HOST_ARGS=(--host="$ARCH-apple-darwin")
-CC=clang CFLAGS="$FLAGS" LDFLAGS="$FLAGS" ./configure --prefix="$PREFIX" "${HOST_ARGS[@]}" \
+CC=clang CFLAGS="$FLAGS" LDFLAGS="$FLAGS" ./configure --prefix="$PREFIX" ${HOST_ARGS[@]+"${HOST_ARGS[@]}"} \
   --disable-shared --enable-static --disable-frontend --disable-gtktest
 make -j"$JOBS" && make install
 echo "::endgroup::"
@@ -45,7 +45,7 @@ echo "::group::FFmpeg ($ARCH)"
 cd "$WORK/ffmpeg-$FFMPEG_VERSION"
 CROSS=()
 [ "$ARCH" != "$(uname -m)" ] && CROSS=(--enable-cross-compile --target-os=darwin)
-./configure --prefix="$WORK/out" --arch="$ARCH" --cc="clang -arch $ARCH" "${CROSS[@]}" \
+./configure --prefix="$WORK/out" --arch="$ARCH" --cc="clang -arch $ARCH" ${CROSS[@]+"${CROSS[@]}"} \
   --extra-cflags="-mmacosx-version-min=$MIN_MACOS -I$PREFIX/include" \
   --extra-ldflags="-mmacosx-version-min=$MIN_MACOS -L$PREFIX/lib" \
   --enable-static --disable-shared --disable-debug --disable-doc --disable-ffplay \
