@@ -27,8 +27,7 @@ final class Preparer: ObservableObject {
 
     let queue: DownloadQueue
     let settings: AppSettings
-    private var process: Process?
-    private var cancelled = false
+    private var engineTask: EngineTask?
     private var reloadAfterCancel = false
 
     init(queue: DownloadQueue, settings: AppSettings) {
@@ -50,27 +49,24 @@ final class Preparer: ObservableObject {
         usedCookies = withCookies
         pastedFromClipboard = false
         clipboardHasLink = false
-        cancelled = false
+        let task = EngineTask()
+        engineTask = task
         Task {
-            var output = ""
-            let args = ["info", link] + (withCookies ? ["--cookies", "chrome"] : [])
-            let result = await Engine.launch(args, started: { self.process = $0 }) { output += $0 }
-            process = nil
-            if cancelled {
+            await ToolManager.shared.ensureReady()
+            let result = ToolManager.shared.phase == .ready
+                ? await Engine.info(link, cookies: withCookies ? "chrome" : nil, task: task)
+                : .failure(EngineFailure(kind: "tools", message: "מנוע ההורדות עוד לא מוכן."))
+            engineTask = nil
+            if task.cancelled {
                 phase = .idle
                 if reloadAfterCancel { reloadAfterCancel = false; fetch() }
                 return
             }
-            let data = Data(output.utf8)
-            if let info = try? Engine.decoder.decode(VideoInfo.self, from: data) {
+            switch result {
+            case .success(let info):
                 setReady(info, link: link)
-            } else {
-                if let failure = try? Engine.decoder.decode(EngineFailure.self, from: data) {
-                    self.failure = failure
-                } else {
-                    failure = EngineFailure(kind: "generic", message: "משהו השתבש בהפעלת מנוע ההורדות.",
-                                            detail: result.stderr.isEmpty ? nil : String(result.stderr.suffix(800)))
-                }
+            case .failure(let failure):
+                self.failure = failure
                 phase = .failed
             }
         }
@@ -101,8 +97,7 @@ final class Preparer: ObservableObject {
 
     func cancel() {
         guard isBusy else { return }
-        cancelled = true
-        process?.terminate()
+        engineTask?.cancel()
     }
 
     func reset() {
@@ -166,16 +161,9 @@ final class Preparer: ObservableObject {
         isUpdating = true
         updateStatus = nil
         Task {
-            struct Result: Decodable { let ok: Bool; let version: String? }
-            var output = ""
-            _ = await Engine.launch(["update"]) { output += $0 }
+            let result = await ToolManager.shared.updateYtDlp()
             isUpdating = false
-            if let result = try? Engine.decoder.decode(Result.self, from: Data(output.utf8)) {
-                updateStatus = result.ok ? "yt-dlp מעודכן (גרסה \(result.version ?? "")). נסה שוב."
-                    : "העדכון נכשל: \(result.version ?? "")"
-            } else {
-                updateStatus = "העדכון נכשל."
-            }
+            updateStatus = result.ok ? "yt-dlp מעודכן (גרסה \(result.message)). נסה שוב." : "העדכון נכשל: \(result.message)"
         }
     }
 

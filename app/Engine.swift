@@ -1,4 +1,4 @@
-// הגשר ל-engine.py: הרצה, קריאת שורות JSON, והמודלים שחוזרים ממנו.
+// המודלים שהמנוע מחזיר לממשק, פונקציות עזר ותיקיות האפליקציה.
 
 import AppKit
 import Foundation
@@ -30,7 +30,7 @@ struct EngineFailure: Codable {
     var detail: String?
 }
 
-struct EngineEvent: Decodable {
+struct EngineEvent {
     let type: String
     var stage: String?
     var fraction: Double?
@@ -46,51 +46,8 @@ struct EngineEvent: Decodable {
     var detail: String?
 }
 
-enum Engine {
-    static let python: String = [
-        "/Library/Frameworks/Python.framework/Versions/Current/bin/python3",
-        "/opt/homebrew/bin/python3",
-        "/usr/local/bin/python3",
-        "/usr/bin/python3",
-    ].first { FileManager.default.isExecutableFile(atPath: $0) } ?? "/usr/bin/python3"
-
-    static let script: String = Bundle.main.path(forResource: "engine", ofType: "py")
-        ?? FileManager.default.currentDirectoryPath + "/engine.py"
-
-    static let decoder: JSONDecoder = {
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return decoder
-    }()
-
-    /// מריץ את המנוע וקורא את הפלט שורה אחרי שורה (כל שורה היא JSON).
-    @MainActor
-    static func launch(_ args: [String], started: (Process) -> Void = { _ in },
-                       onLine: (String) -> Void) async -> (status: Int32, stderr: String) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: python)
-        process.arguments = ["-I", script] + args
-        var env = ProcessInfo.processInfo.environment
-        env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-        process.environment = env
-        let out = Pipe(), err = Pipe()
-        process.standardOutput = out
-        process.standardError = err
-        let exit = AsyncStream<Int32> { continuation in
-            process.terminationHandler = { continuation.yield($0.terminationStatus); continuation.finish() }
-        }
-        do { try process.run() } catch { return (-1, error.localizedDescription) }
-        started(process)
-        do {
-            for try await line in out.fileHandleForReading.bytes.lines { onLine(line) }
-        } catch {}
-        let errText = String(decoding: err.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-        var status: Int32 = -1
-        for await code in exit { status = code }
-        return (status, errText)
-    }
-
-    static func json(_ object: [String: Any]) -> String {
+enum JSONText {
+    static func from(_ object: [String: Any]) -> String {
         guard let data = try? JSONSerialization.data(withJSONObject: object) else { return "{}" }
         return String(decoding: data, as: UTF8.self)
     }
@@ -196,7 +153,12 @@ enum AppPaths {
     private static var base: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
     }
-    static var support: URL { base.appendingPathComponent("Barak Downloader", isDirectory: true) }
+    /// BARAK_SUPPORT_DIR: לבדיקות של "מק נקי" (בלי לגעת בתיקייה האמיתית)
+    static var support: URL {
+        if let dir = ProcessInfo.processInfo.environment["BARAK_SUPPORT_DIR"] { return URL(fileURLWithPath: dir) }
+        return base.appendingPathComponent("Barak Downloader", isDirectory: true)
+    }
+    static var tools: URL { support.appendingPathComponent("tools", isDirectory: true) }
     static var legacy: URL { base.appendingPathComponent("VideoDownloader", isDirectory: true) }
     static var history: URL { support.appendingPathComponent("history.json") }
 

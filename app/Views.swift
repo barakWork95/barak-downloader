@@ -22,20 +22,18 @@ struct ContentView: View {
     @ObservedObject var prep: Preparer
     @ObservedObject var queue: DownloadQueue
     @ObservedObject var settings: AppSettings
+    @ObservedObject var tools: ToolManager = .shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Header()
-            LinkField(prep: prep)
-            Group {
-                switch prep.phase {
-                case .idle: IdleHint(compact: !queue.jobs.isEmpty)
-                case .fetching: FetchingCard(prep: prep)
-                case .ready: if let info = prep.info { ReadyCard(prep: prep, info: info, queueBusy: queue.running != nil) }
-                case .failed: FailedCard(prep: prep)
-                }
+            UpdateBanner(updates: .shared)
+            if tools.phase == .ready {
+                LinkField(prep: prep)
+                prepArea
+            } else {
+                ToolSetupCard(tools: tools)
             }
-            .transition(.opacity)
             if !queue.jobs.isEmpty {
                 DownloadsList(queue: queue, prep: prep)
             }
@@ -47,10 +45,22 @@ struct ContentView: View {
         .environment(\.layoutDirection, .rightToLeft)
         .animation(.easeInOut(duration: 0.18), value: prep.phase)
         .dropDestination(for: URL.self) { urls, _ in
-            guard let link = urls.first else { return false }
+            guard let link = urls.first, tools.phase == .ready else { return false }
             prep.load(link.absoluteString)
             return true
         }
+    }
+
+    var prepArea: some View {
+            Group {
+                switch prep.phase {
+                case .idle: IdleHint(compact: !queue.jobs.isEmpty)
+                case .fetching: FetchingCard(prep: prep)
+                case .ready: if let info = prep.info { ReadyCard(prep: prep, info: info, queueBusy: queue.running != nil) }
+                case .failed: FailedCard(prep: prep)
+                }
+            }
+            .transition(.opacity)
     }
 }
 

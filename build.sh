@@ -1,7 +1,6 @@
 #!/bin/bash
 # בונה את "Barak Downloader.app". עם --install מעתיק גם לשולחן העבודה.
 # ICON=electric ./build.sh לגרסת האייקון הכהה (ברירת מחדל: brand)
-# להריץ שוב אחרי כל שינוי ב-engine.py: האפליקציה מחזיקה עותק משלו.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -25,10 +24,14 @@ fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/he.lproj"
-swiftc -O -swift-version 5 -parse-as-library -target arm64-apple-macos15 \
-  app/*.swift -o "$APP/Contents/MacOS/Barak"
+# Universal: Apple Silicon + Intel, macOS 14 ומעלה
+for arch in arm64 x86_64; do
+  swiftc -O -swift-version 5 -parse-as-library -target "$arch-apple-macos14" \
+    app/*.swift -o "build/Barak-$arch"
+done
+lipo -create build/Barak-arm64 build/Barak-x86_64 -output "$APP/Contents/MacOS/Barak"
 cp app/Info.plist "$APP/Contents/"
-cp engine.py build/AppIcon.icns "$APP/Contents/Resources/"
+cp build/AppIcon.icns "$APP/Contents/Resources/"
 cp -R chrome-extension "$APP/Contents/Resources/"
 codesign --force --sign - "$APP"
 echo "נבנה: $APP"

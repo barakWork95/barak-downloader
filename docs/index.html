@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barak ⚡ Downloader</title>
+<meta name="description" content="אפליקציה למק להורדת סרטונים מיוטיוב, אינסטגרם, טיקטוק, פייסבוק ו-X. בוחרים איכות, חותכים קטע, מכינים קובץ קטן לוואטסאפ. חינם וקוד פתוח.">
+<meta property="og:title" content="Barak ⚡ Downloader">
+<meta property="og:description" content="להוריד סרטונים למק, בלי אתרים מפוקפקים. חינם וקוד פתוח.">
+<meta property="og:image" content="https://barakwork95.github.io/barak-downloader/img/4-ready-light.png">
+<link rel="icon" href="img/icon.png">
+<style>
+  :root {
+    --bg: #fbfaff;
+    --surface: #ffffff;
+    --text: #1d1b26;
+    --muted: #6b6880;
+    --line: #e8e5f2;
+    --accent: #7b2ff7;
+    --accent-2: #ff5f6d;
+    --code-bg: #f2effa;
+    --shadow: 0 20px 50px -20px rgba(60, 30, 120, 0.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121018;
+      --surface: #1b1824;
+      --text: #f2f0f8;
+      --muted: #a29fb5;
+      --line: #2c2838;
+      --accent: #a77bff;
+      --accent-2: #ff7d88;
+      --code-bg: #262233;
+      --shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.7);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Hebrew", "Segoe UI", Arial, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  a { color: var(--accent); }
+  code, kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 0.92em;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
+  /* כותרת */
+  .hero {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 48px;
+    align-items: center;
+    padding: 72px 0 56px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+  .brand img { width: 64px; height: 64px; }
+  .brand span { font-weight: 800; font-size: 1.35rem; direction: ltr; unicode-bidi: isolate; }
+  h1 { font-size: clamp(2rem, 4.2vw, 3.1rem); line-height: 1.15; margin: 0 0 16px; letter-spacing: -0.01em; }
+  h1 em {
+    font-style: normal;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .lead { font-size: 1.15rem; color: var(--muted); margin: 0 0 28px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 14px 26px;
+    border-radius: 14px;
+    font-weight: 700; font-size: 1.05rem;
+    text-decoration: none;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent-2), var(--accent));
+    color: #fff;
+    box-shadow: 0 10px 24px -10px rgba(123, 47, 247, 0.65);
+  }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-ghost { border: 1px solid var(--line); color: var(--text); background: var(--surface); }
+  .meta { margin-top: 14px; font-size: 0.9rem; color: var(--muted); }
+  .shot { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 18px; box-shadow: var(--shadow); border: 1px solid var(--line); }
+  /* בלי זה, רוחב התמונה המקורי מותח את עמודת ה-grid מעבר למסך */
+  .hero > *, .gallery > *, .two > *, .features > *, .stack > * { min-width: 0; }
+  body { overflow-x: hidden; }
+
+  /* פיצ'רים */
+  section { padding: 56px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.8rem; margin: 0 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 32px; }
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .feature { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+  .feature .ico { font-size: 1.6rem; }
+  .feature h3 { margin: 8px 0 6px; font-size: 1.08rem; }
+  .feature p { margin: 0; color: var(--muted); font-size: 0.96rem; }
+  .gallery { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: start; margin-top: 36px; }
+  .gallery figure { margin: 0; }
+  .gallery figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 10px; text-align: center; }
+  .stack { display: grid; gap: 24px; }
+
+  /* התקנה */
+  .steps { counter-reset: step; display: grid; gap: 14px; padding: 0; margin: 0; list-style: none; }
+  .steps li {
+    counter-increment: step;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 64px 18px 20px; position: relative;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; right: 18px; top: 16px;
+    width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #fff; font-weight: 800;
+  }
+  .steps b { display: block; margin-bottom: 2px; }
+  .steps p { margin: 4px 0 0; color: var(--muted); }
+  .note {
+    margin-top: 18px; padding: 16px 18px; border-radius: 14px;
+    background: color-mix(in srgb, var(--accent) 9%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+
+  /* שאלות */
+  details { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; }
+  summary { cursor: pointer; font-weight: 700; }
+  details p { color: var(--muted); margin: 10px 0 0; }
+
+  footer { padding: 40px 0 60px; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--line); }
+  footer p { margin: 4px 0; }
+
+  @media (max-width: 860px) {
+    .hero, .gallery, .two { grid-template-columns: 1fr; gap: 32px; }
+    .hero { padding-top: 40px; }
+    .features { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 560px) {
+    .features { grid-template-columns: 1fr; }
+    .btn { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <header class="hero">
+    <div>
+      <div class="brand"><img src="img/icon.png" alt=""><span>Barak ⚡ Downloader</span></div>
+      <h1>להוריד סרטונים למק, <em>בלי אתרים מפוקפקים.</em></h1>
+      <p class="lead">מדביקים קישור מיוטיוב, אינסטגרם, טיקטוק, פייסבוק או X, בוחרים איכות, וזהו. אפשר גם לחתוך קטע או להכין קובץ קטן לוואטסאפ.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/barakWork95/barak-downloader/releases/latest/download/Barak-Downloader.dmg">⬇ הורדה למק</a>
+        <a class="btn btn-ghost" href="#install">איך מתקינים</a>
+      </div>
+      <p class="meta">macOS 14 ומעלה · Apple Silicon ו-Intel · חינם וקוד פתוח</p>
+    </div>
+    <img class="shot" src="img/4-ready-light.png" alt="החלון הראשי: פרטי הסרטון ורשימת האיכויות עם הגודל של כל אחת">
+  </header>
+
+  <section>
+    <h2>מה יש בפנים</h2>
+    <p class="sub">כל מה שצריך כדי לשמור סרטון, בלי פרסומות ובלי הרשמה.</p>
+    <div class="features">
+      <div class="feature"><div class="ico">🎚️</div><h3>איכות לבחירה</h3><p>רק האיכויות שקיימות באמת בסרטון, עם הגודל המדויק של כל אחת. ברירת המחדל נפתחת בכל נגן.</p></div>
+      <div class="feature"><div class="ico">✂️</div><h3>חיתוך קטע</h3><p>מורידים רק את הדקה שרוצים. קישור עם זמן (למשל <code>?t=90</code>) פותח את החיתוך מאותה שנייה.</p></div>
+      <div class="feature"><div class="ico">💬</div><h3>קובץ קטן לוואטסאפ</h3><p>מכווץ לכ-15MB ומתנגן בכל טלפון, בלי לחפש אפליקציה נוספת.</p></div>
+      <div class="feature"><div class="ico">📋</div><h3>תור והיסטוריה</h3><p>מדביקים כמה קישורים ברצף. כל מה שירד נשאר ברשימה, עם "פתח" ו"הצג ב-Finder".</p></div>
+      <div class="feature"><div class="ico">🧩</div><h3>תוסף לכרום</h3><p>כפתור בדפדפן, או קליק ימני על סרטון, שולח אותו ישר לאפליקציה.</p></div>
+      <div class="feature"><div class="ico">🎵</div><h3>MP3 עם עטיפה</h3><p>אודיו בלבד, עם תמונת העטיפה ושם היוצר בתוך הקובץ.</p></div>
+    </div>
+
+    <div class="gallery">
+      <figure>
+        <img class="shot" src="img/5-trim-whatsapp-light.png" alt="חיתוך קטע וקובץ לוואטסאפ, ורשימת ההורדות">
+        <figcaption>חיתוך קטע, קובץ לוואטסאפ ותור הורדות</figcaption>
+      </figure>
+      <div class="stack">
+        <figure>
+          <img class="shot" src="img/9-menubar-dark.png" alt="החלונית בסרגל התפריטים">
+          <figcaption>אייקון בסרגל התפריטים (לא חובה)</figcaption>
+        </figure>
+        <figure>
+          <img class="shot" src="img/0-setup-light.png" alt="הכנת מנוע ההורדות בפתיחה הראשונה">
+          <figcaption>בפתיחה הראשונה האפליקציה מורידה את הכלים שהיא צריכה</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>התקנה</h2>
+    <p class="sub">שתי דקות, פעם אחת.</p>
+    <div class="two">
+      <div>
+        <ol class="steps">
+          <li><b>מורידים את הקובץ</b><p><a href="https://github.com/barakWork95/barak-downloader/releases/latest/download/Barak-Downloader.dmg">Barak-Downloader.dmg</a>, פותחים אותו, וגוררים את האפליקציה לתיקיית Applications.</p></li>
+          <li><b>פותחים פעם ראשונה</b><p>macOS יציג הודעה שהוא לא יכול לאמת את האפליקציה. לוחצים "סיום" (לא "העבר לפח").</p></li>
+          <li><b>מאשרים בהגדרות</b><p>הגדרות המערכת ← פרטיות ואבטחה ← גוללים למטה ← "פתח בכל זאת" ליד Barak Downloader, ומאשרים עם הסיסמה. צריך לעשות את זה רק פעם אחת.</p></li>
+          <li><b>האפליקציה מכינה את עצמה</b><p>בפתיחה הראשונה היא מורידה את מנוע ההורדות (בערך 135MB). מכאן והלאה הכול מוכן.</p></li>
+        </ol>
+        <div class="note"><b>למה מופיעה האזהרה?</b> אפל מבקשת 99 דולר בשנה כדי "לחתום" אפליקציות. Barak Downloader חינמית ולא חתומה, אז macOS מבקש אישור ידני פעם אחת. הקוד פתוח לגמרי <a href="https://github.com/barakWork95/barak-downloader">ב-GitHub</a>.</div>
+      </div>
+      <div>
+        <h3>תוסף לכרום (לא חובה)</h3>
+        <ol class="steps">
+          <li><b>מורידים ופורסים</b><p><a href="https://github.com/barakWork95/barak-downloader/releases/latest/download/Barak-Chrome-Extension.zip">Barak-Chrome-Extension.zip</a>. לחיצה כפולה פורסת אותו לתיקייה.</p></li>
+          <li><b>פותחים את דף התוספים</b><p>בכרום: <code>chrome://extensions</code>, ומפעילים למעלה "מצב מפתח" (Developer mode).</p></li>
+          <li><b>גוררים את התיקייה לדף</b><p>מעכשיו כפתור התוסף, או קליק ימני על קישור או סרטון, שולח אותו לאפליקציה. בפעם הראשונה כרום ישאל אם לפתוח את Barak Downloader; כדאי לסמן "תמיד".</p></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>שאלות</h2>
+    <details>
+      <summary>מאיפה האפליקציה מורידה את הכלים שלה?</summary>
+      <p>yt-dlp ו-Deno מהדפים הרשמיים שלהם ב-GitHub. FFmpeg נבנה מהקוד הרשמי, בתהליך פתוח בריפו הזה. לכל קובץ יש קוד אימות (SHA-256), והאפליקציה בודקת אותו לפני שהיא משתמשת בקובץ.</p>
+    </details>
+    <details>
+      <summary>מה קורה כשיוטיוב משנה משהו וההורדה מפסיקה לעבוד?</summary>
+      <p>yt-dlp מתעדכן לבד פעם ביום. אם הורדה נכשלת, במסך השגיאה יש כפתור "עדכן את yt-dlp". כשיוצאת גרסה חדשה של האפליקציה עצמה, מופיעה הודעה בחלון.</p>
+    </details>
+    <details>
+      <summary>זה חוקי?</summary>
+      <p>הכלי עצמו חוקי, אבל תנאי השימוש של חלק מהאתרים אוסרים הורדה. השתמשו בו לסרטונים שלכם, לתוכן ברישיון חופשי, או לתוכן שקיבלתם רשות להוריד.</p>
+    </details>
+    <details>
+      <summary>יש גרסה ל-Windows או לטלפון?</summary>
+      <p>כרגע רק למק.</p>
+    </details>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><a href="https://github.com/barakWork95/barak-downloader">קוד פתוח ב-GitHub</a> · רישיון MIT · <a href="https://github.com/barakWork95/barak-downloader/blob/main/THIRD_PARTY_NOTICES.md">רישיונות של הכלים</a></p>
+    <p>הסרטון בצילומי המסך: Big Buck Bunny © Blender Foundation, ברישיון CC BY 3.0.</p>
+  </div>
+</footer>
+</body>
+</html>

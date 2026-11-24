@@ -1,0 +1,68 @@
+# גרסה חדשה: git tag v1.2.0 && git push --tags
+# בונה את האפליקציה (Apple Silicon + Intel), אורז DMG ואת תוסף הכרום, ומפרסם Release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to (re)publish, e.g. v1.0.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Check pinned tool checksums
+        run: |
+          if grep -n '"PENDING"' app/Tools.swift; then echo "::error::FFmpeg checksums are not set in app/Tools.swift"; exit 1; fi
+
+      - name: Check version matches tag
+        run: |
+          PLIST=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" app/Info.plist)
+          [ "v$PLIST" = "$TAG" ] || { echo "::error::Info.plist version $PLIST does not match tag $TAG"; exit 1; }
+
+      - name: Build app
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          swift --version
+          ./build.sh
+          lipo -archs "build/Barak Downloader.app/Contents/MacOS/Barak"
+
+      - name: Package
+        run: |
+          mkdir -p dist dmg
+          cp -R "build/Barak Downloader.app" dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname "Barak Downloader" -srcfolder dmg -ov -format UDZO dist/Barak-Downloader.dmg
+          (cd chrome-extension && zip -q -r -X ../dist/Barak-Chrome-Extension.zip .)
+          (cd dist && shasum -a 256 *.dmg *.zip > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          **להורדה:** `Barak-Downloader.dmg` (macOS 14 ומעלה, Apple Silicon ו-Intel). פותחים, גוררים לתיקיית Applications.
+
+          **בפתיחה הראשונה:** האפליקציה לא חתומה אצל אפל, אז macOS יחסום אותה. הגדרות המערכת ← פרטיות ואבטחה ← "פתח בכל זאת". ההסבר המלא: https://barakwork95.github.io/barak-downloader/
+
+          **תוסף לכרום:** `Barak-Chrome-Extension.zip`.
+          EOF
+          sed -i '' 's/^          //' notes.md
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* -R "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" dist/* -R "$GITHUB_REPOSITORY" --title "Barak ⚡ Downloader ${TAG#v}" --notes-file notes.md --latest
+          fi

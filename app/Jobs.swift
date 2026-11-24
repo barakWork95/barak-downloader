@@ -31,8 +31,8 @@ final class DownloadJob: ObservableObject, Identifiable {
     @Published var failure: EngineFailure?
     @Published var finishedAt: Date?
 
-    var process: Process?
-    var cancelled = false
+    var task = EngineTask()
+    var cancelled: Bool { task.cancelled }
 
     init(id: UUID = UUID(), url: String, title: String, platform: String, thumbnail: String?, detail: String,
          state: String, choice: Int, options: String, createdAt: Date = Date(), status: Status = .queued) {
@@ -111,8 +111,7 @@ final class DownloadQueue: ObservableObject {
     func cancel(_ job: DownloadJob) {
         switch job.status {
         case .running:
-            job.cancelled = true
-            job.process?.terminate()  // המנוע מנקה קבצים חלקיים בעצמו
+            job.task.cancel()  // ההורדה נעשית בתיקייה זמנית, אז לא נשארים קבצים חלקיים
         case .queued:
             job.status = .cancelled
             changed()
@@ -152,21 +151,17 @@ final class DownloadQueue: ObservableObject {
         job.status = .running
         job.fraction = 0
         job.indeterminate = false
-        job.cancelled = false
+        job.task = EngineTask()
         changed()
         Task {
             var finished = false
-            let result = await Engine.launch(["download", job.state, String(job.choice), job.options],
-                                             started: { job.process = $0 }) { line in
-                guard let event = try? Engine.decoder.decode(EngineEvent.self, from: Data(line.utf8)) else { return }
+            await Engine.download(state: job.state, choice: job.choice, options: job.options, task: job.task) { event in
                 handle(event, for: job, finished: &finished)
             }
-            job.process = nil
             if job.cancelled {
                 job.status = .cancelled
             } else if !finished {
-                job.failure = EngineFailure(kind: "generic", message: "ההורדה נכשלה.",
-                                            detail: result.stderr.isEmpty ? nil : String(result.stderr.suffix(800)))
+                job.failure = EngineFailure(kind: "generic", message: "ההורדה נכשלה.")
                 job.status = .failed
             }
             if job.finishedAt == nil { job.finishedAt = Date() }

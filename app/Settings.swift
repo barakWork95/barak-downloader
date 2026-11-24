@@ -62,7 +62,7 @@ final class AppSettings: ObservableObject {
             "whatsapp": whatsapp,
         ]
         if let trim { options["trim"] = [trim.0, trim.1] }
-        return Engine.json(options)
+        return JSONText.from(options)
     }
 
     func chooseFolder() {
@@ -144,6 +144,7 @@ struct SettingsView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
+            EngineSection(tools: .shared)
             Section("התראות") {
                 Toggle("התראה כשהורדה מסתיימת (כשהאפליקציה ברקע)", isOn: $settings.notify)
             }
@@ -160,5 +161,25 @@ struct SettingsView: View {
         .frame(width: 520)
         .fixedSize(horizontal: false, vertical: true)
         .environment(\.layoutDirection, .rightToLeft)
+    }
+}
+
+struct EngineSection: View {
+    @ObservedObject var tools: ToolManager
+    var body: some View {
+        Section {
+            LabeledContent("yt-dlp") {
+                HStack(spacing: 8) {
+                    Text(tools.ytdlpVersion.isEmpty ? "לא מותקן" : tools.ytdlpVersion).foregroundStyle(.secondary).monospacedDigit()
+                    Button(tools.isUpdating ? "בודק…" : "בדוק עדכון") { tools.checkForUpdate() }
+                        .disabled(tools.isUpdating || tools.phase != .ready)
+                }
+            }
+        } header: {
+            Text("מנוע ההורדות")
+        } footer: {
+            Text(tools.updateMessage ?? "מתעדכן לבד פעם ביום, כי אתרי הוידאו משתנים כל הזמן.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
     }
 }

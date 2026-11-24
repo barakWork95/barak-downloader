@@ -13,6 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registerURLHandler()  // שוב, למקרה ש-SwiftUI רשם handler משלו בדרך
         Notifier.setup()
         ClipboardWatcher.shared.start()
+        Task { await ToolManager.shared.ensureReady() }
+        UpdateChecker.shared.checkIfDue()
         AppSettings.refreshInstalledChromeExtension()
         NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main) { note in
             guard let window = note.object as? NSWindow, window.identifier?.rawValue.hasPrefix("main") == true else { return }
@@ -168,10 +170,26 @@ enum Snapshots {
         return [queued, running, done, failed]
     }
 
+    /// חלון שיכול להיות "פעיל", כדי שהכפתורים יצוירו בצבע (לצילומים לאתר)
+    final class KeyWindow: NSWindow {
+        override var canBecomeKey: Bool { true }
+        override var canBecomeMain: Bool { true }
+    }
+
     static func render(to dir: String) {
         _ = NSApplication.shared
-        NSApp.setActivationPolicy(.prohibited)
+        NSApp.setActivationPolicy(.accessory)
+        NSApp.activate()
         let settings = AppSettings(persist: false)
+        let readyTools = ToolManager()
+        readyTools.phase = .ready
+        let installing = ToolManager()
+        installing.phase = .installing
+        installing.fraction = 0.42
+        installing.current = "deno"
+        write(ContentView(prep: Preparer(queue: DownloadQueue(persist: false), settings: settings),
+                          queue: DownloadQueue(persist: false), settings: settings, tools: installing),
+              "0-setup-light", dir: dir, dark: false, wait: 0.4)
         typealias Setup = (Preparer, DownloadQueue) -> Void
         let states: [(String, Setup)] = [
             ("1-idle", { _, _ in }),
@@ -196,7 +214,7 @@ enum Snapshots {
                 let queue = DownloadQueue(persist: false)
                 let prep = Preparer(queue: queue, settings: settings)
                 setup(prep, queue)
-                write(ContentView(prep: prep, queue: queue, settings: settings), "\(name)-\(dark ? "dark" : "light")",
+                write(ContentView(prep: prep, queue: queue, settings: settings, tools: readyTools), "\(name)-\(dark ? "dark" : "light")",
                       dir: dir, dark: dark, wait: name.hasPrefix("4") || name.hasPrefix("5") ? 2.5 : 0.4)
             }
         }
@@ -210,20 +228,29 @@ enum Snapshots {
     }
 
     static func write<V: View>(_ view: V, _ name: String, dir: String, dark: Bool, wait: Double) {
-        let host = NSHostingView(rootView: view)
+        let host = NSHostingView(rootView: view.environment(\.controlActiveState, .key))
         let appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         host.appearance = appearance
-        let window = NSWindow(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = KeyWindow(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = appearance
         window.contentView = host
         host.frame = NSRect(origin: .zero, size: host.fittingSize)
+        window.setFrame(NSRect(x: -20_000, y: -20_000, width: host.fittingSize.width, height: host.fittingSize.height), display: false)
+        window.makeKeyAndOrderFront(nil)
         RunLoop.current.run(until: Date().addingTimeInterval(wait))  // זמן לתמונות הממוזערות
         host.frame = NSRect(origin: .zero, size: host.fittingSize)
         host.layoutSubtreeIfNeeded()
-        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
+        // SNAPSHOT_SCALE=2: חד במסכי Retina (בשביל האתר)
+        let scale = Double(ProcessInfo.processInfo.environment["SNAPSHOT_SCALE"] ?? "") ?? 1
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(host.bounds.width * scale),
+                                         pixelsHigh: Int(host.bounds.height * scale), bitsPerSample: 8,
+                                         samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return }
+        rep.size = host.bounds.size
         host.cacheDisplay(in: host.bounds, to: rep)
         try? rep.representation(using: .png, properties: [:])?
             .write(to: URL(fileURLWithPath: dir).appendingPathComponent("\(name).png"))
+        window.orderOut(nil)
     }
 }
 
@@ -238,6 +265,13 @@ enum SelfTest {
 
     static func run(url: String, choice: Int, flags: [String]) {
         _ = NSApplication.shared
+        let tools = ToolManager.shared
+        let started = Date()
+        Task { await tools.ensureReady() }
+        spin(timeout: 900) { tools.phase == .ready || { if case .failed = tools.phase { return true }; return false }() }
+        print("tools:", tools.phase, String(format: "%.0fs", Date().timeIntervalSince(started)), "| yt-dlp", tools.ytdlpVersion,
+              "|", tools.ytdlp, "|", tools.deno, "|", tools.ffmpeg)
+        guard tools.phase == .ready else { return }
         let queue = DownloadQueue(persist: false)
         let prep = Preparer(queue: queue, settings: AppSettings(persist: false))
         prep.url = url
