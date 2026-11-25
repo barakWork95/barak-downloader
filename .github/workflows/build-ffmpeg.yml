@@ -25,7 +25,13 @@ jobs:
           mkdir t && cd t && unzip -q ../dist/*-arm64.zip
           ./ffmpeg -hide_banner -encoders | grep -E "h264_videotoolbox|libmp3lame|^ A..... aac "
           ./ffmpeg -hide_banner -protocols | grep -w https
-          ./ffmpeg -hide_banner -f lavfi -i testsrc=size=320x240:rate=30 -t 2 -c:v h264_videotoolbox -allow_sw 1 -b:v 500k test.mp4
+          # במכונות הווירטואליות של GitHub אין מקודד חומרה (VideoToolbox), אז כאן מקודדים עם מקודד מובנה;
+          # את VideoToolbox בודקים על מק אמיתי (--selftest עם trim/whatsapp)
+          # קלט גולמי (בלי lavfi, שלא נכלל בבנייה): 2 שניות וידאו ואודיו
+          head -c $((320*240*3/2*60)) /dev/urandom > raw.yuv
+          head -c $((44100*2*2*2)) /dev/urandom > raw.pcm
+          ./ffmpeg -hide_banner -f rawvideo -pix_fmt yuv420p -s 320x240 -r 30 -i raw.yuv -f s16le -ar 44100 -ac 2 -i raw.pcm -c:v mpeg4 -c:a aac test.mp4
+          ./ffmpeg -hide_banner -i test.mp4 -vn -c:a libmp3lame test.mp3
           ./ffprobe -v error -show_entries format=duration test.mp4
           lipo -archs ffmpeg
           unzip -q -o ../dist/*-x86_64.zip -d x86 && lipo -archs x86/ffmpeg
