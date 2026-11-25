@@ -7,8 +7,8 @@ import Foundation
 import SwiftUI
 
 // SHA-256 של ffmpeg-<גרסה>-<arch>.zip מתוך SHA256SUMS ב-Release tools-ffmpeg-9.0.2
-let FFMPEG_SHA_ARM64 = "PENDING"
-let FFMPEG_SHA_X86_64 = "PENDING"
+let FFMPEG_SHA_ARM64 = "aeaddf5969eb96278e1b80ab99975cf26e291d486011fbc519784ca4d3288430"
+let FFMPEG_SHA_X86_64 = "a933e3ba05c056867200d5babae15e19f9f06559bd5853b1101ea13bd276659d"
 
 enum Arch {
     static var current: String {
@@ -56,7 +56,7 @@ enum ToolManifest {
             id: "ffmpeg", version: "9.0.2",
             url: URL(string: "https://github.com/barakWork95/barak-downloader/releases/download/tools-ffmpeg-9.0.2/ffmpeg-9.0.2-\(Arch.current).zip")!,
             sha256: arm ? FFMPEG_SHA_ARM64 : FFMPEG_SHA_X86_64,
-            size: 30_000_000)
+            size: arm ? 20_668_852 : 22_453_114)
     }
 
     static var all: [ToolSpec] { [ytdlp, deno, ffmpeg] }
