@@ -1,5 +1,6 @@
 # בונה ffmpeg (LGPL) לשתי הארכיטקטורות ומפרסם ב-Release בשם tools-ffmpeg-<גרסה>.
 # האפליקציה מורידה משם את ffmpeg בהפעלה הראשונה (עם בדיקת SHA256).
+# שתי הארכיטקטורות נבנות באותה מכונה (x86_64 בבנייה צולבת), כי מכונות מק ב-GitHub לפעמים בתור ארוך.
 name: Build FFmpeg
 
 on:
@@ -10,38 +11,24 @@ permissions:
 
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [arm64, x86_64]
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: Build tools (assembler only, not linked)
         run: brew install nasm
-      - name: Build
-        run: scripts/build-ffmpeg.sh ${{ matrix.arch }} dist
-      - name: Smoke test
-        if: matrix.arch == 'arm64'
+      - name: Build arm64
+        run: scripts/build-ffmpeg.sh arm64 dist
+      - name: Build x86_64
+        run: scripts/build-ffmpeg.sh x86_64 dist
+      - name: Smoke test (arm64)
         run: |
-          mkdir t && cd t && unzip -q ../dist/*.zip
+          mkdir t && cd t && unzip -q ../dist/*-arm64.zip
           ./ffmpeg -hide_banner -encoders | grep -E "h264_videotoolbox|libmp3lame|^ A..... aac "
           ./ffmpeg -hide_banner -protocols | grep -w https
           ./ffmpeg -hide_banner -f lavfi -i testsrc=size=320x240:rate=30 -t 2 -c:v h264_videotoolbox -allow_sw 1 -b:v 500k test.mp4
           ./ffprobe -v error -show_entries format=duration test.mp4
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ffmpeg-${{ matrix.arch }}
-          path: dist/*.zip
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
+          lipo -archs ffmpeg
+          unzip -q -o ../dist/*-x86_64.zip -d x86 && lipo -archs x86/ffmpeg
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -50,6 +37,7 @@ jobs:
           VERSION=$(ls ffmpeg-*-arm64.zip | sed -E 's/ffmpeg-(.*)-arm64.zip/\1/')
           shasum -a 256 *.zip > SHA256SUMS
           cat SHA256SUMS
+          gh release delete "tools-ffmpeg-$VERSION" -R "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
           gh release create "tools-ffmpeg-$VERSION" *.zip SHA256SUMS -R "$GITHUB_REPOSITORY" \
             --title "FFmpeg $VERSION (tools)" --prerelease \
             --notes "FFmpeg $VERSION + LAME, static LGPL builds for macOS 14+ (arm64, x86_64), built from the official sources by scripts/build-ffmpeg.sh. Downloaded by the app on first launch."
